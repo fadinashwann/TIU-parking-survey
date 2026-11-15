@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TIU Parking Survey</title>
+<meta name="description" content="A short, anonymous student survey about parking at Tishk International University.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one narrow left-aligned column, like a ticket from a parking machine.
+   Progress is a strip of road with a car that drives forward one step per answer. */
+:root {
+  --bg: #ECEEF0;        /* concrete */
+  --surface: #FFFFFF;
+  --ink: #1D2228;       /* asphalt */
+  --muted: #5B6570;
+  --line: #CDD3D9;
+  --accent: #1756B8;    /* parking-sign blue */
+  --on-accent: #FFFFFF;
+  --mark: #F2BE1A;      /* bay-line yellow */
+  --road: #2A3038;
+  --error: #B3261E;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171B20; --surface: #222830; --ink: #F1F3F5; --muted: #A3ADB8;
+    --line: #3A424C; --accent: #7FB0FF; --on-accent: #0E1620; --mark: #F2BE1A;
+    --road: #0E1114; --error: #FF8A80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171B20; --surface: #222830; --ink: #F1F3F5; --muted: #A3ADB8;
+  --line: #3A424C; --accent: #7FB0FF; --on-accent: #0E1620; --mark: #F2BE1A;
+  --road: #0E1114; --error: #FF8A80; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  max-width: 600px; margin: 0 auto; padding: 20px 20px 32px;
+  display: flex; flex-direction: column; gap: 28px; min-height: 100vh;
+}
+
+/* Header */
+.top { display: flex; align-items: center; gap: 12px; }
+.sign {
+  width: 40px; height: 40px; flex: none; border-radius: 8px;
+  background: var(--accent); color: var(--on-accent);
+  display: grid; place-items: center;
+  font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1;
+}
+.top-name { font-family: var(--display); font-weight: 700; font-size: 21px; letter-spacing: .02em; text-transform: uppercase; line-height: 1.1; }
+.top-sub { color: var(--muted); font-size: 14px; }
+
+main { flex: 1; display: flex; flex-direction: column; gap: 24px; }
+h1, h2 { font-family: var(--display); font-weight: 700; line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(40px, 11vw, 60px); text-transform: uppercase; letter-spacing: .005em; }
+h1 span { box-shadow: inset 0 -0.32em 0 var(--mark); }
+h2 { font-size: clamp(28px, 7.5vw, 36px); }
+h2:focus { outline: none; }
+p { margin: 0; max-width: 34em; }
+.lead { font-size: 19px; }
+.muted { color: var(--muted); }
+
+/* Intro facts: three parking bays */
+.bays { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--road); border-radius: 12px; padding: 0 6px; }
+.bay { padding: 16px 10px 14px; color: #FFFFFF; border-left: 3px solid var(--mark); }
+.bay:last-child { border-right: 3px solid var(--mark); }
+.bay b { display: block; font-family: var(--display); font-size: 30px; line-height: 1; font-weight: 700; }
+.bay small { font-size: 13.5px; color: #C9D0D7; }
+
+.note { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; font-size: 15.5px; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 600; }
+
+/* Buttons */
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn {
+  background: var(--accent); color: var(--on-accent); border: 0; border-radius: 10px;
+  padding: 15px 26px; font-weight: 600; font-size: 18px; align-self: flex-start;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .45; cursor: default; filter: none; }
+.link { background: none; border: 0; padding: 8px 2px; color: var(--muted); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--ink); }
+:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+
+/* Road progress */
+.road-wrap { display: flex; flex-direction: column; gap: 8px; }
+.road-label { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.road { position: relative; height: 30px; border-radius: 8px; background: var(--road); overflow: hidden; }
+.road::before {
+  content: ""; position: absolute; left: 10px; right: 10px; top: 50%; height: 2px; margin-top: -1px;
+  background: repeating-linear-gradient(90deg, var(--mark) 0 14px, transparent 14px 26px);
+  opacity: .85;
+}
+.car { position: absolute; top: 5px; left: 0; width: 40px; height: 20px; transition: left .45s cubic-bezier(.3,.8,.3,1); }
+
+/* Options */
+.options { display: flex; flex-direction: column; gap: 10px; }
+.opt {
+  text-align: left; width: 100%; background: var(--surface); border: 1.5px solid var(--line);
+  border-left: 5px solid var(--mark); border-radius: 10px; padding: 14px 16px; font-size: 17.5px; font-weight: 500;
+  transition: transform .08s, border-color .12s, background .12s;
+}
+.opt:hover { border-color: var(--accent); border-left-color: var(--mark); }
+.opt:active { transform: scale(.99); }
+.opt[aria-checked="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); border-left-color: var(--mark); }
+
+textarea {
+  width: 100%; min-height: 140px; resize: vertical; font: inherit; color: var(--ink);
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px;
+}
+textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.counter { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: auto; }
+.error { color: var(--error); font-weight: 500; }
+
+/* Thank-you */
+.done { align-items: flex-start; padding-top: 4vh; }
+.done-sign {
+  width: 88px; height: 88px; border-radius: 18px; background: var(--accent); color: var(--on-accent);
+  display: grid; place-items: center; border-bottom: 6px solid var(--mark);
+}
+.done-sign svg { width: 46px; height: 46px; }
+
+footer { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+.preview { background: var(--mark); color: #1D2228; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; }
+
+.fade { animation: in .28s ease both; }
+@keyframes in { from { opacity: .0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } .car, .opt { transition: none; } }
+@media (max-width: 400px) { .bay b { font-size: 25px; } .bay small { font-size: 12.5px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="sign" aria-hidden="true">P</div>
+    <div>
+      <div class="top-name">TIU Parking Survey</div>
+      <div class="top-sub">A survey by students, for students</div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <footer>
+    Independent student project about parking at Tishk International University.
+    This is not an official university survey.
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   SETTINGS — paste your two Supabase values between the quotes.
+   While they are empty, the site runs in preview mode
+   and does not save any answers.
+   ============================================================ */
+const SUPABASE_URL = "https://rafcvfnsdkxkvyrnobpp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_8zbKDvfAh9vHRHVK_Pjd1w_sm0QWwKr";
+const TABLE = "parking_answers";
+
+/* ============================================================
+   QUESTIONS — edit the text here. Do not change the "id" values;
+   they are the column names in the database.
+   ============================================================ */
+const QUESTIONS = [
+  { id: "faculty", text: "What faculty are you in?", options: [
+    "Dentistry", "Pharmacy", "Engineering", "Nursing", "Applied Science", "Law",
+    "Administrative Sciences and Economics", "Education" ] },
+  { id: "grade", text: "What grade are you in?", options: ["First", "Second", "Third", "Fourth", "Fifth"] },
+  { id: "transport", text: "How do you come to university?", options: [
+    "I drive my own car", "Taxi", "Someone drives me", "Bus", "I walk" ] },
+  { id: "arrival_time", text: "What time do you arrive at the university?", options: [
+    "8:30 am to 10:00 am", "10:30 am to 12:00 pm", "After 12:30 pm", "None of the above" ] },
+  { id: "late_frequency", text: "How often are you late to class because of parking?", options: [
+    "Never", "Sometimes", "Often", "Almost every day" ] },
+  { id: "car_hit", text: "Has your car ever been hit in the university parking?", options: [
+    "Never been hit", "Once or twice", "I lost count" ] },
+  { id: "biggest_problem", text: "What do you think the biggest parking problem is?", options: [
+    "Not enough spaces", "Parking is too far from buildings", "Cars parked the wrong way or blocking others",
+    "Traffic at the gate", "Mud", "None of the above" ] },
+  { id: "suggestion", type: "text", optional: true,
+    text: "What do you think will make our university parking better?" },
+  { id: "overall_feeling", text: "Overall, how do you feel about our university parking?", options: [
+    "Very happy", "Happy", "Unhappy", "Very unhappy" ] }
+];
+
+const PREVIEW = !SUPABASE_URL || !SUPABASE_KEY;
+const DONE_KEY = "tiu-parking-survey-done";
+const app = document.getElementById("app");
+const answers = {};
+let step = 0;
+
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const k in (attrs || {})) {
+    if (k === "class") n.className = attrs[k];
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), attrs[k]);
+    else n.setAttribute(k, attrs[k]);
+  }
+  kids.flat().forEach(c => c != null && n.append(c));
+  return n;
+}
+function show(...nodes) {
+  app.className = ""; app.replaceChildren(...nodes.filter(n => n != null));
+  void app.offsetWidth; app.className = "fade"; window.scrollTo(0, 0);
+}
+function alreadyDone() { try { return localStorage.getItem(DONE_KEY) === "1"; } catch (e) { return false; } }
+function markDone() { try { localStorage.setItem(DONE_KEY, "1"); } catch (e) {} }
+
+/* ---------- Screen 1: welcome ---------- */
+function intro() {
+  const h1 = el("h1", null, "Tell us about ", el("span", null, "parking"), " at TIU.");
+  show(
+    h1,
+    el("p", { class: "lead" }, "Finding a space, getting to class on time, mud after rain. We want to know how parking really is for students."),
+    el("div", { class: "bays" },
+      el("div", { class: "bay" }, el("b", null, "9"), el("small", null, "short questions")),
+      el("div", { class: "bay" }, el("b", null, "3 min"), el("small", null, "or less")),
+      el("div", { class: "bay" }, el("b", null, "100%"), el("small", null, "anonymous"))),
+    el("p", { class: "note" }, el("strong", null, "All answers are anonymous. "),
+      "We do not ask for your name, email, or student ID. The survey will not take more than 3 minutes of your time."),
+    PREVIEW ? el("p", { class: "preview" }, "Preview mode: answers are not saved yet.") : null,
+    el("button", { class: "btn", type: "button", onclick: () => { step = 0; question(); } }, "Start survey")
+  );
+}
+
+/* ---------- Screen 2: one question ---------- */
+function carSvg() {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 40 20"); s.setAttribute("class", "car"); s.setAttribute("aria-hidden", "true");
+  s.innerHTML = '<rect x="1" y="2" width="38" height="16" rx="6" fill="#F5F7F9"/>' +
+    '<rect x="22" y="4.5" width="8" height="11" rx="2.5" fill="#1756B8"/>' +
+    '<rect x="7" y="5" width="5" height="10" rx="2" fill="#1756B8" opacity=".75"/>' +
+    '<rect x="36.5" y="4" width="2" height="3.5" rx="1" fill="#F2BE1A"/><rect x="36.5" y="12.5" width="2" height="3.5" rx="1" fill="#F2BE1A"/>';
+  return s;
+}
+function roadBar() {
+  const total = QUESTIONS.length;
+  const car = carSvg();
+  const road = el("div", { class: "road", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(total),
+    "aria-valuenow": String(step), "aria-label": "Survey progress" }, car);
+  const from = Math.max(step - 1, 0) / total, to = step / total;
+  const pos = f => "calc(6px + (100% - 52px) * " + f + ")";
+  car.style.left = pos(from);
+  requestAnimationFrame(() => requestAnimationFrame(() => { car.style.left = pos(to); }));
+  return el("div", { class: "road-wrap" },
+    el("div", { class: "road-label" },
+      el("span", null, "Question " + (step + 1) + " of " + total),
+      el("span", null, (total - step - 1) === 0 ? "Last one" : (total - step - 1) + " left")),
+    road);
+}
+
+function question() {
+  const q = QUESTIONS[step];
+  const last = step === QUESTIONS.length - 1;
+  const title = el("h2", { tabindex: "-1", id: "q-title" }, q.text);
+  const nodes = [roadBar(), title];
+  const back = step > 0 ? el("button", { class: "link", type: "button", onclick: () => { step--; question(); } }, "Back") : null;
+
+  if (q.type === "text") {
+    const count = el("span", { class: "counter" }, "0 / 500");
+    const ta = el("textarea", { id: "answer-" + q.id, maxlength: "500", "aria-labelledby": "q-title",
+      placeholder: "Write your idea here. You can skip this question." });
+    ta.value = answers[q.id] || "";
+    const next = el("button", { class: "btn", type: "button", onclick: () => {
+      answers[q.id] = ta.value.trim(); advance(); } }, ta.value.trim() ? "Next" : "Skip");
+    const upd = () => { count.textContent = ta.value.length + " / 500"; next.textContent = ta.value.trim() ? "Next" : "Skip"; };
+    ta.addEventListener("input", upd); upd();
+    nodes.push(el("p", { class: "muted" }, "Optional. Answer in your own words."), ta,
+      el("div", { class: "row" }, next, back, count));
+  } else {
+    const send = last ? el("button", { class: "btn", type: "button", onclick: submit }, "Send my answers") : null;
+    if (send && !answers[q.id]) send.disabled = true;
+    const group = el("div", { class: "options", role: "radiogroup", "aria-labelledby": "q-title" },
+      q.options.map(o => el("button", { class: "opt", type: "button", role: "radio",
+        "aria-checked": String(answers[q.id] === o),
+        onclick: e => {
+          answers[q.id] = o;
+          group.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-checked", String(b === e.currentTarget)));
+          if (last) { send.disabled = false; }
+          else { group.querySelectorAll(".opt").forEach(b => b.disabled = true); setTimeout(advance, 260); }
+        } }, o)));
+    nodes.push(group, el("div", { class: "row" }, send, back));
+  }
+  show(...nodes);
+  title.focus({ preventScroll: true });
+}
+function advance() { if (step < QUESTIONS.length - 1) { step++; question(); } else { submit(); } }
+
+/* ---------- Send answers to the database ---------- */
+async function submit() {
+  show(el("h2", null, "Sending your answers…"), el("p", { class: "muted" }, "One moment, please."));
+  if (PREVIEW) { setTimeout(thanks, 500); return; }
+  const row = {};
+  QUESTIONS.forEach(q => { row[q.id] = answers[q.id] || null; });
+  try {
+    const res = await fetch(SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/" + TABLE, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify(row)
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    markDone(); thanks();
+  } catch (err) {
+    console.error("Could not save answers:", err);
+    show(
+      el("h2", null, "Your answers were not sent."),
+      el("p", { class: "error" }, "Please check your internet connection and try again. Your answers are still here."),
+      el("div", { class: "row" },
+        el("button", { class: "btn", type: "button", onclick: submit }, "Try again"),
+        el("button", { class: "link", type: "button", onclick: () => { step = QUESTIONS.length - 1; question(); } }, "Back to my answers")));
+  }
+}
+
+/* ---------- Screen 3: thank you ---------- */
+function thanks() {
+  const sign = el("div", { class: "done-sign", "aria-hidden": "true" });
+  sign.innerHTML = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l10 10 18-22"/></svg>';
+  app.classList.add("done");
+  show(
+    sign,
+    el("h1", null, "Thank ", el("span", null, "you.")),
+    el("p", { class: "lead" }, "Your answers are parked safely with us."),
+    el("p", { class: "muted" }, "Every answer helps us show what students really think about parking at TIU. You can close this page now."),
+    PREVIEW ? el("p", { class: "preview" }, "Preview mode: nothing was saved.") : null
+  );
+  app.classList.add("done");
+}
+
+if (!PREVIEW && alreadyDone()) thanks(); else intro();
+</script>
+</body>
+</html>
